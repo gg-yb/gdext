@@ -3,9 +3,77 @@ use godot::engine::{
 };
 use godot::prelude::*;
 
+#[derive(Copy, Clone)]
+#[repr(i32)]
+pub enum Foo {
+    Qux = 0,
+    Bar = 1,
+    Baz = 2,
+}
+
+impl Foo {
+    pub const HINT_DESC: &str = "2/2:Qux:0,Bar:1,Baz:2";
+}
+
+impl godot::bind::property::Property for Foo {
+    type Intermediate = i32;
+
+    fn get_property(&self) -> Self::Intermediate {
+        (*self) as Self::Intermediate
+    }
+
+    fn set_property(&mut self, value: Self::Intermediate) {
+        *self = Self::try_from(value).expect("enum value should be in range");
+    }
+}
+
+impl TryFrom<i32> for Foo {
+    type Error = ();
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Qux),
+            1 => Ok(Self::Bar),
+            2 => Ok(Self::Baz),
+            _ => Err(())
+        }
+    }
+}
+
+impl godot::bind::property::Export for Foo {
+    fn default_export_info() -> godot::bind::property::ExportInfo {
+        godot::bind::property::ExportInfo {
+            hint: godot::engine::global::PropertyHint::PROPERTY_HINT_ENUM,
+            hint_string: "Qux:0,Bar:1,Baz:2".into(),
+        }
+    }
+}
+
+impl godot::bind::property::TypeStringHint for Foo {
+    fn type_string() -> String {
+        Self::HINT_DESC.to_owned()
+    }
+}
+
+impl godot::builtin::meta::VariantMetadata for Foo {
+    fn variant_type() -> godot::builtin::VariantType {
+        godot::builtin::VariantType::Int
+    }
+
+    fn param_metadata() -> godot::sys::GDExtensionClassMethodArgumentMetadata {
+        godot::sys::GDEXTENSION_METHOD_ARGUMENT_METADATA_INT_IS_INT32
+    }
+}
+
 #[derive(GodotClass)]
 #[class(base=Area2D)]
 pub struct Player {
+    #[export]
+    foo: Foo,
+
+    #[export]
+    foos: Array<Foo>,
+
     speed: real,
     screen_size: Vector2,
 
@@ -47,6 +115,8 @@ impl Player {
 impl Area2DVirtual for Player {
     fn init(base: Base<Area2D>) -> Self {
         Player {
+            foo: Foo::Bar,
+            foos: Array::new(),
             speed: 400.0,
             screen_size: Vector2::new(0.0, 0.0),
             base,
